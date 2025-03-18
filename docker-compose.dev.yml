@@ -1,0 +1,12 @@
+services:
+  redis_token:
+    container_name: ${REDIS_HOST}
+    image: redis:alpine
+    restart: always
+    ports:
+      - ${REDIS_PORT}:${REDIS_PORT}
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
