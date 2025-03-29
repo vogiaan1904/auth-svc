@@ -1,13 +1,14 @@
 import { HttpStatus, Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { ClientGrpc } from '@nestjs/microservices';
+import { ClientGrpc, RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcryptjs';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, throwError } from 'rxjs';
 import { TokenService } from 'src/modules/token/token.service';
 import {
   LoginRequestDto,
   RegisterRequestDto,
+  Role,
   ValidateRequestDto,
 } from './dto/auth-request.dto';
 import { TokenPayload } from './interfaces/token.interface';
@@ -88,6 +89,7 @@ export class AuthService implements OnModuleInit {
       firstName: firstName,
       lastName: lastName,
       gender: gender,
+      role: Role.USER,
     };
 
     const response: CreateUserResponse = await firstValueFrom(
@@ -159,13 +161,19 @@ export class AuthService implements OnModuleInit {
       );
       if (!user) {
         return {
-          status: HttpStatus.CONFLICT,
+          status: HttpStatus.UNAUTHORIZED,
           error: ['User not found'],
           userId: null,
+          role: null,
         };
       }
 
-      return { status: HttpStatus.OK, error: null, userId: decoded.userId };
+      return {
+        status: HttpStatus.OK,
+        error: null,
+        userId: decoded.userId,
+        role: user.data.role,
+      };
     } catch (error) {
       const status =
         error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError'
@@ -176,6 +184,7 @@ export class AuthService implements OnModuleInit {
         status,
         error: [error.message],
         userId: null,
+        role: null,
       };
     }
   }

@@ -6,6 +6,7 @@ import { protobufPackage } from './modules/auth/proto-buffers/auth.pb';
 import { join } from 'path';
 import { HttpExceptionFilter } from './modules/auth/filter/http-exception.filter';
 import { GrpcLoggingInterceptor } from './interceptor/grpc-logging.interceptor';
+import { AllExceptionsFilter } from './common/filters/grpc-exception.filter';
 
 async function bootstrap() {
   const app: INestMicroservice = await NestFactory.createMicroservice(
@@ -13,14 +14,22 @@ async function bootstrap() {
     {
       transport: Transport.GRPC,
       options: {
-        url: '0.0.0.0:50051',
+        url: '127.0.0.1:50051',
         package: protobufPackage,
         protoPath: join('node_modules/grpc-nest-proto/proto/auth.proto'),
       },
     },
   );
-  app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen();
 }
 bootstrap();

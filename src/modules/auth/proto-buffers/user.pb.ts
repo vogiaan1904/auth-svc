@@ -29,6 +29,7 @@ export interface UserData {
   avatar: string;
   addresses: Address[];
   password: string;
+  role: string;
 }
 
 /** CreateUser */
@@ -38,6 +39,7 @@ export interface CreateUserRequest {
   firstName: string;
   lastName: string;
   gender: string;
+  role: string;
 }
 
 export interface CreateUserResponse {

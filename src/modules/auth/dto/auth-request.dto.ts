@@ -13,6 +13,11 @@ export enum Gender {
   OTHER = 'OTHER',
 }
 
+export enum Role {
+  ADMIN = 'ADMIN',
+  USER = 'USER',
+}
+
 export class LoginRequestDto implements LoginRequest {
   @IsEmail()
   email: string;
