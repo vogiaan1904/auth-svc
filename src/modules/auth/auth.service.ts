@@ -1,17 +1,13 @@
-import { HttpStatus, Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { ClientGrpc, RpcException } from '@nestjs/microservices';
+import { ClientGrpc } from '@nestjs/microservices';
 import * as bcrypt from 'bcryptjs';
-import { firstValueFrom, throwError } from 'rxjs';
+import { Cache } from 'cache-manager';
+import { firstValueFrom } from 'rxjs';
+import { AuthErrors } from 'src/common/constants/errors.constant';
 import { TokenService } from 'src/modules/token/token.service';
-import {
-  LoginRequestDto,
-  RegisterRequestDto,
-  Role,
-  ValidateRequestDto,
-} from './dto/auth-request.dto';
-import { TokenPayload } from './interfaces/token.interface';
 import {
   LoginRequest,
   LoginResponse,
@@ -19,16 +15,20 @@ import {
   RefreshTokenResponse,
   RegisterResponse,
   ValidateResponse,
-} from './proto-buffers/auth.pb';
+} from 'src/protos/auth.pb';
 import {
   CreateUserRequest,
-  CreateUserResponse,
   FindOneResponse,
   USER_SERVICE_NAME,
+  ErrorCode as UserErrorCode,
   UserServiceClient,
-} from './proto-buffers/user.pb';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+} from 'src/protos/user.pb';
+import {
+  RegisterRequestDto,
+  Role,
+  ValidateRequestDto,
+} from './dto/auth-request.dto';
+import { TokenPayload } from './interfaces/token.interface';
 @Injectable()
 export class AuthService implements OnModuleInit {
   private readonly SALT_ROUND: number = 10;
@@ -70,19 +70,17 @@ export class AuthService implements OnModuleInit {
   async register(dto: RegisterRequestDto): Promise<RegisterResponse> {
     const { email, password, firstName, lastName, gender } = dto;
 
-    const existingUserWithEmail: FindOneResponse = await firstValueFrom(
+    const findOneResp: FindOneResponse = await firstValueFrom(
       this.userService.findOne({ email }),
     );
 
-    if (existingUserWithEmail.status == HttpStatus.OK) {
+    if (findOneResp.error.code == UserErrorCode.OK) {
       return {
-        status: HttpStatus.CONFLICT,
-        error: ['Email already exists'],
+        error: AuthErrors.EMAIL_ALREADY_EXISTS,
       };
     }
 
     const hashedPassword: string = await bcrypt.hash(password, this.SALT_ROUND);
-
     const createUserData: CreateUserRequest = {
       email: email,
       password: hashedPassword,
@@ -92,26 +90,25 @@ export class AuthService implements OnModuleInit {
       role: Role.USER,
     };
 
-    const response: CreateUserResponse = await firstValueFrom(
-      this.userService.createUser(createUserData),
-    );
+    await firstValueFrom(this.userService.createUser(createUserData));
 
     return {
-      status: response.status,
-      error: response.error,
+      error: AuthErrors.OK,
     };
   }
 
   async login(dto: LoginRequest): Promise<LoginResponse> {
     const { email, password } = dto;
-    const userResponse = await firstValueFrom(
+    const findOneResp = await firstValueFrom(
       this.userService.findOne({ email }),
     );
 
-    if (userResponse.status !== HttpStatus.OK) {
+    console.log('findOneResp', findOneResp);
+
+    if (findOneResp.error.code == UserErrorCode.USER_NOT_FOUND) {
+      console.log('User not found');
       return {
-        status: HttpStatus.UNAUTHORIZED,
-        error: ['User not found'],
+        error: AuthErrors.INVALID_CREDENTIALS,
         accessToken: null,
         refreshToken: null,
       };
@@ -119,74 +116,56 @@ export class AuthService implements OnModuleInit {
 
     const isValidPassword = await bcrypt.compare(
       password,
-      userResponse.data.password,
+      findOneResp.data.password,
     );
     if (!isValidPassword) {
       return {
-        status: HttpStatus.BAD_REQUEST,
-        error: ['Email or password is incorrect'],
+        error: AuthErrors.INVALID_CREDENTIALS,
         accessToken: null,
         refreshToken: null,
       };
     }
 
     const accessToken = this.generateAccessToken({
-      userId: userResponse.data.id,
+      userId: findOneResp.data.id,
     });
 
     const refreshToken = this.generateRefreshToken({
-      userId: userResponse.data.id,
+      userId: findOneResp.data.id,
     });
 
-    await this.storeRefreshToken(userResponse.data.id, refreshToken);
+    await this.storeRefreshToken(findOneResp.data.id, refreshToken);
 
     return {
-      status: HttpStatus.OK,
-      error: null,
+      error: AuthErrors.OK,
       accessToken,
       refreshToken,
     };
   }
 
   async validate({ token }: ValidateRequestDto): Promise<ValidateResponse> {
-    try {
-      const secret = this.configService.get<string>('JWT_ACCESS_SECRET_KEY');
+    const secret = this.configService.get<string>('JWT_ACCESS_SECRET_KEY');
 
-      const decoded: TokenPayload = await this.jwtService.verifyAsync(token, {
-        secret,
-      });
+    const decoded: TokenPayload = await this.jwtService.verifyAsync(token, {
+      secret,
+    });
 
-      const user = await firstValueFrom(
-        this.userService.findOne({ id: decoded.userId }),
-      );
-      if (!user) {
-        return {
-          status: HttpStatus.UNAUTHORIZED,
-          error: ['User not found'],
-          userId: null,
-          role: null,
-        };
-      }
-
+    const findOneResp = await firstValueFrom(
+      this.userService.findOne({ id: decoded.userId }),
+    );
+    if (findOneResp.error.code == UserErrorCode.USER_NOT_FOUND) {
       return {
-        status: HttpStatus.OK,
-        error: null,
-        userId: decoded.userId,
-        role: user.data.role,
-      };
-    } catch (error) {
-      const status =
-        error.name === 'TokenExpiredError' || error.name === 'JsonWebTokenError'
-          ? HttpStatus.FORBIDDEN
-          : HttpStatus.INTERNAL_SERVER_ERROR;
-
-      return {
-        status,
-        error: [error.message],
+        error: AuthErrors.INVALID_TOKEN,
         userId: null,
         role: null,
       };
     }
+
+    return {
+      error: AuthErrors.OK,
+      userId: decoded.userId,
+      role: findOneResp.data.role,
+    };
   }
 
   async storeRefreshToken(userId: string, refreshToken: string): Promise<void> {
@@ -225,68 +204,55 @@ export class AuthService implements OnModuleInit {
   async refreshToken(
     payload: RefreshTokenRequest,
   ): Promise<RefreshTokenResponse> {
-    try {
-      const { userId, refreshToken } = payload;
-      const userResponse = await firstValueFrom(
-        this.userService.findOne({ id: userId }),
-      );
+    const { userId, refreshToken } = payload;
+    const userResponse = await firstValueFrom(
+      this.userService.findOne({ id: userId }),
+    );
 
-      if (userResponse.status !== HttpStatus.OK) {
-        return {
-          status: HttpStatus.UNAUTHORIZED,
-          error: ['User not found'],
-          accessToken: null,
-          refreshToken: null,
-        };
-      }
-
-      const storedRefreshToken = await this.cacheService.get<string>(userId);
-
-      if (!storedRefreshToken) {
-        return {
-          status: HttpStatus.UNAUTHORIZED,
-          error: ['Token not found'],
-          accessToken: null,
-          refreshToken: null,
-        };
-      }
-      const isValidRefreshToken = await bcrypt.compare(
-        refreshToken,
-        storedRefreshToken,
-      );
-
-      if (!isValidRefreshToken) {
-        await this.cacheService.del(userId);
-        return {
-          status: HttpStatus.UNAUTHORIZED,
-          error: ['Token has been revoked'],
-          accessToken: null,
-          refreshToken: null,
-        };
-      }
-
-      const newAccessToken = this.generateAccessToken({
-        userId: userResponse.data.id,
-      });
-      const newRefreshToken = this.generateRefreshToken({
-        userId: userResponse.data.id,
-      });
-
-      await this.storeRefreshToken(userResponse.data.id, newRefreshToken);
-
+    if (userResponse.error.code == UserErrorCode.USER_NOT_FOUND) {
       return {
-        status: HttpStatus.OK,
-        error: null,
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      };
-    } catch (error) {
-      return {
-        status: HttpStatus.INTERNAL_SERVER_ERROR,
-        error: [error.message],
+        error: AuthErrors.INVALID_TOKEN,
         accessToken: null,
         refreshToken: null,
       };
     }
+
+    const storedRefreshToken = await this.cacheService.get<string>(userId);
+
+    if (!storedRefreshToken) {
+      return {
+        error: AuthErrors.TOKEN_NOT_FOUND,
+        accessToken: null,
+        refreshToken: null,
+      };
+    }
+    const isValidRefreshToken = await bcrypt.compare(
+      refreshToken,
+      storedRefreshToken,
+    );
+
+    if (!isValidRefreshToken) {
+      await this.cacheService.del(userId);
+      return {
+        error: AuthErrors.INVALID_TOKEN,
+        accessToken: null,
+        refreshToken: null,
+      };
+    }
+
+    const newAccessToken = this.generateAccessToken({
+      userId: userResponse.data.id,
+    });
+    const newRefreshToken = this.generateRefreshToken({
+      userId: userResponse.data.id,
+    });
+
+    await this.storeRefreshToken(userResponse.data.id, newRefreshToken);
+
+    return {
+      error: AuthErrors.OK,
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 }

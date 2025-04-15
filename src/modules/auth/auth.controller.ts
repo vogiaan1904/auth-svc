@@ -14,7 +14,7 @@ import {
   RefreshTokenResponse,
   RegisterResponse,
   ValidateResponse,
-} from './proto-buffers/auth.pb';
+} from 'src/protos/auth.pb';
 import {
   LoginRequestDto,
   RefreshTokenRequestDto,

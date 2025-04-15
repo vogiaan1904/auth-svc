@@ -2,12 +2,13 @@ import { Logger, Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { USER_PACKAGE_NAME, USER_SERVICE_NAME } from './proto-buffers/user.pb';
 import { JwtModule } from '@nestjs/jwt';
 import { TokenModule } from 'src/modules/token/token.module';
 import { ConfigService } from '@nestjs/config';
 import { InterceptingCall } from '@grpc/grpc-js';
 import { GrpcLoggingInterceptor } from 'src/interceptor/grpc-logging.interceptor';
+import { USER_PACKAGE_NAME } from 'src/protos/user.pb';
+import { USER_SERVICE_NAME } from 'src/protos/user.pb';
 
 @Module({
   imports: [

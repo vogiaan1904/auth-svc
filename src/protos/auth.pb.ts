@@ -10,6 +10,35 @@ import { Observable } from "rxjs";
 
 export const protobufPackage = "auth";
 
+export enum ErrorCode {
+  OK = 0,
+  /** INVALID_CREDENTIALS - Authentication errors (010100 - 010199) */
+  INVALID_CREDENTIALS = 100100,
+  INVALID_TOKEN = 100101,
+  TOKEN_EXPIRED = 100102,
+  REFRESH_TOKEN_EXPIRED = 100103,
+  TOKEN_NOT_FOUND = 100104,
+  /** EMAIL_ALREADY_EXISTS - Registration errors (010200 - 010299) */
+  EMAIL_ALREADY_EXISTS = 100200,
+  INVALID_EMAIL_FORMAT = 100201,
+  INVALID_PASSWORD_FORMAT = 100202,
+  REGISTRATION_FAILED = 100203,
+  /** EMAIL_NOT_VERIFIED - Verification errors (010300 - 010399) */
+  EMAIL_NOT_VERIFIED = 100300,
+  VERIFICATION_TOKEN_EXPIRED = 100301,
+  VERIFICATION_TOKEN_INVALID = 100302,
+  /** RESET_TOKEN_EXPIRED - Password reset errors (010400 - 010499) */
+  RESET_TOKEN_EXPIRED = 100400,
+  RESET_TOKEN_INVALID = 100401,
+  PASSWORD_RESET_FAILED = 100402,
+  UNRECOGNIZED = -1,
+}
+
+export interface Error {
+  code: ErrorCode;
+  message: string;
+}
+
 /** Register */
 export interface RegisterRequest {
   email: string;
@@ -20,8 +49,7 @@ export interface RegisterRequest {
 }
 
 export interface RegisterResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
 }
 
 /** Login */
@@ -31,8 +59,7 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
   accessToken: string;
   refreshToken: string;
 }
@@ -44,8 +71,7 @@ export interface RefreshTokenRequest {
 }
 
 export interface RefreshTokenResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
   accessToken: string;
   refreshToken: string;
 }
@@ -56,8 +82,7 @@ export interface SendVerificationEmailRequest {
 }
 
 export interface SendVerificationEmailResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
 }
 
 /** Forgot password */
@@ -66,8 +91,7 @@ export interface ForgotPasswordRequest {
 }
 
 export interface ForgotPasswordResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
 }
 
 /** Reset password */
@@ -77,8 +101,7 @@ export interface ResetPasswordRequest {
 }
 
 export interface ResetPasswordResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
 }
 
 /** Validate */
@@ -87,8 +110,7 @@ export interface ValidateRequest {
 }
 
 export interface ValidateResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
   userId: string;
   role: string;
 }

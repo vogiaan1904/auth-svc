@@ -5,7 +5,7 @@ import {
   RefreshTokenRequest,
   RegisterRequest,
   ValidateRequest,
-} from '../proto-buffers/auth.pb';
+} from 'src/protos/auth.pb';
 
 export enum Gender {
   MALE = 'MALE',
@@ -20,9 +20,11 @@ export enum Role {
 
 export class LoginRequestDto implements LoginRequest {
   @IsEmail()
+  @IsNotEmpty()
   email: string;
 
   @IsString()
+  @IsNotEmpty()
   password: string;
 }
 

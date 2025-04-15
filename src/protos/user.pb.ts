@@ -7,8 +7,26 @@
 /* eslint-disable */
 import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { Observable } from "rxjs";
+import { Empty } from "./google/protobuf/empty.pb";
 
 export const protobufPackage = "user";
+
+export enum ErrorCode {
+  OK = 0,
+  USER_NOT_FOUND = 200100,
+  USER_ALREADY_EXISTS = 200101,
+  INVALID_USER_DATA = 200102,
+  USER_DELETED = 200103,
+  USER_INACTIVE = 200104,
+  USER_SUSPENDED = 200105,
+  USER_BLOCKED = 200106,
+  UNRECOGNIZED = -1,
+}
+
+export interface Error {
+  code: ErrorCode;
+  message: string;
+}
 
 export interface Address {
   street: string;
@@ -43,8 +61,7 @@ export interface CreateUserRequest {
 }
 
 export interface CreateUserResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
   id: string;
 }
 
@@ -55,22 +72,14 @@ export interface FindOneRequest {
 }
 
 export interface FindOneResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
   data: UserData | undefined;
 }
 
 /** FindAll */
-export interface FindAllRequest {
-  page: number;
-  limit: number;
-}
-
 export interface FindAllResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
   data: UserData[];
-  total: number;
 }
 
 /** Update user */
@@ -83,8 +92,7 @@ export interface UpdateUserRequest {
 }
 
 export interface UpdateUserResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
 }
 
 /** Delete user */
@@ -93,8 +101,7 @@ export interface DeleteUserRequest {
 }
 
 export interface DeleteUserResponse {
-  status: number;
-  error: string[];
+  error: Error | undefined;
 }
 
 export const USER_PACKAGE_NAME = "user";
@@ -104,7 +111,7 @@ export interface UserServiceClient {
 
   findOne(request: FindOneRequest): Observable<FindOneResponse>;
 
-  findAll(request: FindAllRequest): Observable<FindAllResponse>;
+  findAll(request: Empty): Observable<FindAllResponse>;
 
   updateUser(request: UpdateUserRequest): Observable<UpdateUserResponse>;
 
@@ -118,7 +125,7 @@ export interface UserServiceController {
 
   findOne(request: FindOneRequest): Promise<FindOneResponse> | Observable<FindOneResponse> | FindOneResponse;
 
-  findAll(request: FindAllRequest): Promise<FindAllResponse> | Observable<FindAllResponse> | FindAllResponse;
+  findAll(request: Empty): Promise<FindAllResponse> | Observable<FindAllResponse> | FindAllResponse;
 
   updateUser(
     request: UpdateUserRequest,
