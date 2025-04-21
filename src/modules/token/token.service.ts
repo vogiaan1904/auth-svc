@@ -36,7 +36,7 @@ export class TokenService {
     try {
       await this.jwtService.verify(token);
       return true;
-    } catch {
+    } catch (e) {
       return false;
     }
   }

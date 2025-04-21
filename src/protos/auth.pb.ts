@@ -7,37 +7,9 @@
 /* eslint-disable */
 import { GrpcMethod, GrpcStreamMethod } from "@nestjs/microservices";
 import { Observable } from "rxjs";
+import { Empty } from "./google/protobuf/empty.pb";
 
 export const protobufPackage = "auth";
-
-export enum ErrorCode {
-  OK = 0,
-  /** INVALID_CREDENTIALS - Authentication errors (010100 - 010199) */
-  INVALID_CREDENTIALS = 100100,
-  INVALID_TOKEN = 100101,
-  TOKEN_EXPIRED = 100102,
-  REFRESH_TOKEN_EXPIRED = 100103,
-  TOKEN_NOT_FOUND = 100104,
-  /** EMAIL_ALREADY_EXISTS - Registration errors (010200 - 010299) */
-  EMAIL_ALREADY_EXISTS = 100200,
-  INVALID_EMAIL_FORMAT = 100201,
-  INVALID_PASSWORD_FORMAT = 100202,
-  REGISTRATION_FAILED = 100203,
-  /** EMAIL_NOT_VERIFIED - Verification errors (010300 - 010399) */
-  EMAIL_NOT_VERIFIED = 100300,
-  VERIFICATION_TOKEN_EXPIRED = 100301,
-  VERIFICATION_TOKEN_INVALID = 100302,
-  /** RESET_TOKEN_EXPIRED - Password reset errors (010400 - 010499) */
-  RESET_TOKEN_EXPIRED = 100400,
-  RESET_TOKEN_INVALID = 100401,
-  PASSWORD_RESET_FAILED = 100402,
-  UNRECOGNIZED = -1,
-}
-
-export interface Error {
-  code: ErrorCode;
-  message: string;
-}
 
 /** Register */
 export interface RegisterRequest {
@@ -48,10 +20,6 @@ export interface RegisterRequest {
   gender: string;
 }
 
-export interface RegisterResponse {
-  error: Error | undefined;
-}
-
 /** Login */
 export interface LoginRequest {
   email: string;
@@ -59,7 +27,6 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  error: Error | undefined;
   accessToken: string;
   refreshToken: string;
 }
@@ -71,7 +38,6 @@ export interface RefreshTokenRequest {
 }
 
 export interface RefreshTokenResponse {
-  error: Error | undefined;
   accessToken: string;
   refreshToken: string;
 }
@@ -81,17 +47,9 @@ export interface SendVerificationEmailRequest {
   email: string;
 }
 
-export interface SendVerificationEmailResponse {
-  error: Error | undefined;
-}
-
 /** Forgot password */
 export interface ForgotPasswordRequest {
   email: string;
-}
-
-export interface ForgotPasswordResponse {
-  error: Error | undefined;
 }
 
 /** Reset password */
@@ -100,17 +58,12 @@ export interface ResetPasswordRequest {
   password: string;
 }
 
-export interface ResetPasswordResponse {
-  error: Error | undefined;
-}
-
 /** Validate */
 export interface ValidateRequest {
   token: string;
 }
 
 export interface ValidateResponse {
-  error: Error | undefined;
   userId: string;
   role: string;
 }
@@ -118,7 +71,7 @@ export interface ValidateResponse {
 export const AUTH_PACKAGE_NAME = "auth";
 
 export interface AuthServiceClient {
-  register(request: RegisterRequest): Observable<RegisterResponse>;
+  register(request: RegisterRequest): Observable<Empty>;
 
   login(request: LoginRequest): Observable<LoginResponse>;
 
@@ -126,15 +79,15 @@ export interface AuthServiceClient {
 
   refreshToken(request: RefreshTokenRequest): Observable<RefreshTokenResponse>;
 
-  sendVerificationEmail(request: SendVerificationEmailRequest): Observable<SendVerificationEmailResponse>;
+  sendVerificationEmail(request: SendVerificationEmailRequest): Observable<Empty>;
 
-  forgotPassword(request: ForgotPasswordRequest): Observable<ForgotPasswordResponse>;
+  forgotPassword(request: ForgotPasswordRequest): Observable<Empty>;
 
-  resetPassword(request: ResetPasswordRequest): Observable<ResetPasswordResponse>;
+  resetPassword(request: ResetPasswordRequest): Observable<Empty>;
 }
 
 export interface AuthServiceController {
-  register(request: RegisterRequest): Promise<RegisterResponse> | Observable<RegisterResponse> | RegisterResponse;
+  register(request: RegisterRequest): void;
 
   login(request: LoginRequest): Promise<LoginResponse> | Observable<LoginResponse> | LoginResponse;
 
@@ -144,17 +97,11 @@ export interface AuthServiceController {
     request: RefreshTokenRequest,
   ): Promise<RefreshTokenResponse> | Observable<RefreshTokenResponse> | RefreshTokenResponse;
 
-  sendVerificationEmail(
-    request: SendVerificationEmailRequest,
-  ): Promise<SendVerificationEmailResponse> | Observable<SendVerificationEmailResponse> | SendVerificationEmailResponse;
+  sendVerificationEmail(request: SendVerificationEmailRequest): void;
 
-  forgotPassword(
-    request: ForgotPasswordRequest,
-  ): Promise<ForgotPasswordResponse> | Observable<ForgotPasswordResponse> | ForgotPasswordResponse;
+  forgotPassword(request: ForgotPasswordRequest): void;
 
-  resetPassword(
-    request: ResetPasswordRequest,
-  ): Promise<ResetPasswordResponse> | Observable<ResetPasswordResponse> | ResetPasswordResponse;
+  resetPassword(request: ResetPasswordRequest): void;
 }
 
 export function AuthServiceControllerMethods() {

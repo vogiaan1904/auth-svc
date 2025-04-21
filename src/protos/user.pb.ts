@@ -11,23 +11,6 @@ import { Empty } from "./google/protobuf/empty.pb";
 
 export const protobufPackage = "user";
 
-export enum ErrorCode {
-  OK = 0,
-  USER_NOT_FOUND = 200100,
-  USER_ALREADY_EXISTS = 200101,
-  INVALID_USER_DATA = 200102,
-  USER_DELETED = 200103,
-  USER_INACTIVE = 200104,
-  USER_SUSPENDED = 200105,
-  USER_BLOCKED = 200106,
-  UNRECOGNIZED = -1,
-}
-
-export interface Error {
-  code: ErrorCode;
-  message: string;
-}
-
 export interface Address {
   street: string;
   city: string;
@@ -61,8 +44,7 @@ export interface CreateUserRequest {
 }
 
 export interface CreateUserResponse {
-  error: Error | undefined;
-  id: string;
+  user: UserData | undefined;
 }
 
 /** FindOne */
@@ -72,14 +54,12 @@ export interface FindOneRequest {
 }
 
 export interface FindOneResponse {
-  error: Error | undefined;
-  data: UserData | undefined;
+  user: UserData | undefined;
 }
 
 /** FindAll */
 export interface FindAllResponse {
-  error: Error | undefined;
-  data: UserData[];
+  users: UserData[];
 }
 
 /** Update user */
@@ -91,17 +71,9 @@ export interface UpdateUserRequest {
   avatar: string;
 }
 
-export interface UpdateUserResponse {
-  error: Error | undefined;
-}
-
 /** Delete user */
 export interface DeleteUserRequest {
   id: string;
-}
-
-export interface DeleteUserResponse {
-  error: Error | undefined;
 }
 
 export const USER_PACKAGE_NAME = "user";
@@ -113,9 +85,9 @@ export interface UserServiceClient {
 
   findAll(request: Empty): Observable<FindAllResponse>;
 
-  updateUser(request: UpdateUserRequest): Observable<UpdateUserResponse>;
+  updateUser(request: UpdateUserRequest): Observable<Empty>;
 
-  deleteUser(request: DeleteUserRequest): Observable<DeleteUserResponse>;
+  deleteUser(request: DeleteUserRequest): Observable<Empty>;
 }
 
 export interface UserServiceController {
@@ -127,13 +99,9 @@ export interface UserServiceController {
 
   findAll(request: Empty): Promise<FindAllResponse> | Observable<FindAllResponse> | FindAllResponse;
 
-  updateUser(
-    request: UpdateUserRequest,
-  ): Promise<UpdateUserResponse> | Observable<UpdateUserResponse> | UpdateUserResponse;
+  updateUser(request: UpdateUserRequest): void;
 
-  deleteUser(
-    request: DeleteUserRequest,
-  ): Promise<DeleteUserResponse> | Observable<DeleteUserResponse> | DeleteUserResponse;
+  deleteUser(request: DeleteUserRequest): void;
 }
 
 export function UserServiceControllerMethods() {

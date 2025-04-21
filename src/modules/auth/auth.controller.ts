@@ -12,7 +12,6 @@ import {
   AUTH_SERVICE_NAME,
   LoginResponse,
   RefreshTokenResponse,
-  RegisterResponse,
   ValidateResponse,
 } from 'src/protos/auth.pb';
 import {
@@ -20,7 +19,7 @@ import {
   RefreshTokenRequestDto,
   RegisterRequestDto,
   ValidateRequestDto,
-} from './dto/auth-request.dto';
+} from './dtos/auth-request.dto';
 import { throwError } from 'rxjs';
 
 @Catch(RpcException)
@@ -37,9 +36,7 @@ export class AuthController {
   private readonly authService: AuthService;
 
   @GrpcMethod(AUTH_SERVICE_NAME, 'Register')
-  private async register(
-    payload: RegisterRequestDto,
-  ): Promise<RegisterResponse> {
+  private async register(payload: RegisterRequestDto): Promise<void> {
     return this.authService.register(payload);
   }
 

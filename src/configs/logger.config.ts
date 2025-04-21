@@ -1,7 +1,7 @@
 export default () => ({
   logger: {
     redact: {
-      fields: ['password', 'secret', 'token'],
+      fields: ['password', 'secret', 'accessToken', 'refreshToken'],
     },
   },
 });
