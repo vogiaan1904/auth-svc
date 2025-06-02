@@ -169,6 +169,8 @@ export class AuthService implements OnModuleInit {
       throw new RpcUnauthenticatedException('Invalid token');
     }
 
+    
+
     return {
       userId: decoded.userId,
       role: findOneResp.user.role,
