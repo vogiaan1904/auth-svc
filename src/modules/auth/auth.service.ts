@@ -8,6 +8,7 @@ import { Cache } from 'cache-manager';
 import { firstValueFrom } from 'rxjs';
 import {
   RpcInvalidArgumentException,
+  RpcNotFoundException,
   RpcUnauthenticatedException,
 } from 'src/common/exceptions/rpc.exception';
 import { TokenService } from 'src/modules/token/token.service';
@@ -35,6 +36,8 @@ import {
 } from './dtos/auth-request.dto';
 import { TokenPayload } from './interfaces/token.interface';
 import { AuthErrors } from 'src/common/constants/errors.constant';
+import { status as GrpcStatus } from '@grpc/grpc-js';
+
 @Injectable()
 export class AuthService implements OnModuleInit {
   private readonly SALT_ROUND: number = 10;
@@ -92,12 +95,17 @@ export class AuthService implements OnModuleInit {
   async register(dto: RegisterRequestDto): Promise<void> {
     const { email, password, firstName, lastName, gender } = dto;
 
-    const findOneResp: FindOneResponse = await firstValueFrom(
-      this.userService.findOne({ email }),
-    );
-
-    if (findOneResp.user !== null) {
-      throw new RpcInvalidArgumentException('User already exists');
+    try {
+      const findOneResp = await firstValueFrom(
+        this.userService.findOne({ email }),
+      );
+      if (findOneResp.user !== null) {
+        throw new RpcInvalidArgumentException(AuthErrors.USER_ALREADY_EXISTS);
+      }
+    } catch (error) {
+      if (error.code != GrpcStatus.NOT_FOUND) {
+        throw error;
+      }
     }
 
     const hashedPassword: string = await bcrypt.hash(password, this.SALT_ROUND);
@@ -120,7 +128,7 @@ export class AuthService implements OnModuleInit {
     );
 
     if (findOneResp.user == null) {
-      throw new RpcInvalidArgumentException('Invalid credentials');
+      throw new RpcInvalidArgumentException(AuthErrors.INVALID_CREDENTIALS);
     }
 
     const isValidPassword = await bcrypt.compare(
@@ -128,7 +136,7 @@ export class AuthService implements OnModuleInit {
       findOneResp.user.password,
     );
     if (!isValidPassword) {
-      throw new RpcInvalidArgumentException('Invalid credentials');
+      throw new RpcInvalidArgumentException(AuthErrors.INVALID_CREDENTIALS);
     }
 
     const accessToken = this.generateAccessToken({
@@ -166,10 +174,8 @@ export class AuthService implements OnModuleInit {
       this.userService.findOne({ id: decoded.userId }),
     );
     if (findOneResp.user == null) {
-      throw new RpcUnauthenticatedException('Invalid token');
+      throw new RpcUnauthenticatedException(AuthErrors.INVALID_TOKEN);
     }
-
-    
 
     return {
       userId: decoded.userId,

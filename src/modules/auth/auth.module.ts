@@ -20,7 +20,7 @@ import { USER_SERVICE_NAME } from 'src/protos/user.pb';
         useFactory: async (configService: ConfigService) => ({
           transport: Transport.GRPC,
           options: {
-            url: '0.0.0.0:50052',
+            url: configService.get<string>('USER_SERVICE_ADDRESS'),
             package: USER_PACKAGE_NAME,
             protoPath: 'node_modules/grpc-nest-proto/proto/user.proto',
             channelOptions: {
